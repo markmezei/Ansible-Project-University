@@ -1,0 +1,31 @@
+---
+- name: Mount the Samba and create a directory on it
+  hosts: vmware_hosts
+  gather_facts: false
+  tasks:
+    - name: Create mount directory
+      file:
+        state: directory
+        path: "{{ mount_path }}"
+        owner: "{{ item['username'] }}"
+        group: "{{ item['group'] }}"
+        mode: "0770"
+      loop: "{{ samba_user }}"
+
+    - name: Mount Samba share
+      mount:
+        path: "{{ mount_path }}"
+        src: "//{{ ansible_facts['default_ipv4']['address'] }}/{{ samba_share_name }}"
+        fstype: cifs
+        state: mounted
+        opts: "credentials=/home/{{ item['username'] }}/smb.cred,uid={{ item['uid'] }},gid={{ item['gid'] }}"
+      loop: "{{ samba_user }}"
+
+    - name: Create a directory on the share
+      file:
+        path: "{{ mount_path }}/directory"
+        state: directory
+        owner: "{{ item['username'] }}"
+        group: "{{ item['group'] }}"
+        mode: "0770"
+      loop: "{{ samba_user }}"

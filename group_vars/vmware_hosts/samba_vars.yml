@@ -1,0 +1,17 @@
+---
+samba_package: samba*
+samba_service: smb
+samba_fw_service: samba
+samba_client_fw_service: samba-client
+cifs_utils_package: cifs-utils
+mount_path: /data/speci
+samba_share_dir: /data/fontos
+src_samba_config: ../samba_config/smb.conf.j2
+dest_samba_config: /etc/samba/smb.conf
+samba_share_name: data
+samba_user:
+  - username: fonok
+    group: fonokok
+    password: redhat
+    uid: 1000
+    gid: 1000

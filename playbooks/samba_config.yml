@@ -1,0 +1,78 @@
+---
+- name: Samba configuration
+  hosts: vmware_hosts
+  gather_facts: false
+  tasks:
+    - name: Install packages
+      package:
+        name: "{{ item }}"
+        state: latest
+      loop:
+        - "{{ samba_package }}"
+        - "{{ cifs_utils_package }}"
+
+    - name: Enable and start {{ samba_service }}
+      service:
+        name: "{{ samba_service }}"
+        enabled: true
+        state: started
+
+    - name: Open the port for {{ samba_fw_service }}
+      firewalld:
+        service: "{{ item }}"
+        permanent: true
+        immediate: true
+        state: enabled
+      loop:
+        - "{{ samba_fw_service }}"
+        - "{{ samba_client_fw_service }}"
+      notify: Restart firewall
+
+    - name: Create Samba directory
+      file:
+        path: "{{ samba_share_dir }}"
+        state: directory
+        owner: "{{ item['username'] }}"
+        group: "{{ item['group'] }}"
+        mode: '0770'
+      loop: "{{ samba_user }}"
+
+    - name: Set SELinux context
+      sefcontext:
+        target: "{{ samba_share_dir }}(/.*)?"
+        setype: samba_share_t
+        state: present
+
+    - name: Apply new SELinux context
+      shell: restorecon -Rv "{{ samba_share_dir }}"
+
+    - name: Deploy Samba config
+      template:
+        src: "{{ src_samba_config }}"
+        dest: "{{ dest_samba_config }}"
+      notify: Restart Samba
+
+    - name: Set an SMB password
+      shell: printf '{{ item['password'] }}\n{{ item['password'] }}\n' | smbpasswd -a {{ item['username'] }}
+      loop: "{{ samba_user }}"
+
+    - name: Create smb.cred file
+      copy:
+        dest: "/home/{{ item['username'] }}/smb.cred"
+        owner: "{{ item['username'] }}"
+        group: "{{ item['group'] }}"
+        mode: "0600"
+        content: |
+          username={{ item['username'] }}
+          password={{ item['password'] }}
+      loop: "{{ samba_user }}"
+
+  handlers:
+    - name: Restart Samba
+      service:
+        name: smb
+        state: restarted
+    - name: Restart firewall
+      service:
+        name: firewalld
+        state: restarted

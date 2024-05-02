@@ -1,0 +1,4 @@
+---
+- import_playbook: playbooks/create_samba_user.yml
+- import_playbook: playbooks/samba_config.yml
+- import_playbook: playbooks/mount_samba.yml
